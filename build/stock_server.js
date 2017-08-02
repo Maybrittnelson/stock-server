@@ -1,20 +1,38 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var express = require("express");
+var ws_1 = require("ws");
 var app = express();
 app.get('/api/stock', function (request, response) {
     var result = stocks;
     var params = request.query;
-    if (params.nam) {
-        result = result.filter(function (stock) { return stock.name.indexOf(params.name); });
+    if (params.name) {
+        result = result.filter(function (stock) { return stock.name.indexOf(params.name) !== -1; });
     }
+    response.json(result);
 });
 app.get('/api/stock/:id', function (request, response) {
     response.json(stocks.find(function (stock) { return stock.id == request.params.id; }));
 });
-var server = app.listen(8080, 'localhost', function () {
-    console.log('服务器已经启动，地址是http://localhost:8080');
+var server = app.listen(8000, 'localhost', function () {
+    console.log('服务器已经启动，地址是http://localhost:8000');
 });
+var subscriptions = new Set();
+var wsServer = new ws_1.Server({ port: 8085 });
+wsServer.on("connection", function (websocket) {
+    subscriptions.add(websocket);
+});
+var messageCount = 0;
+setInterval(function () {
+    subscriptions.forEach(function (ws) {
+        if (ws.readyState === 1) {
+            ws.send(JSON.stringify({ messageCount: messageCount++ }));
+        }
+        else {
+            subscriptions.delete(ws);
+        }
+    });
+}, 2000);
 var Stock = (function () {
     function Stock(id, name, price, rating, desc, categories) {
         this.id = id;

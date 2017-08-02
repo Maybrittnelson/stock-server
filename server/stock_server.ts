@@ -6,18 +6,38 @@ const app = express();
 app.get('/api/stock', (request, response) => {
     let result = stocks;
     let params = request.query;
-    if(params.nam) {
-        result = result.filter(stock => stock.name.indexOf(params.name))
+    if(params.name) {
+        result = result.filter(stock => stock.name.indexOf(params.name) !== -1)
     }
+    response.json(result);
 });
 
 app.get('/api/stock/:id', (request, response) => {
     response.json(stocks.find(stock => stock.id == request.params.id))
 });
 
-const server = app.listen(8080, 'localhost', () =>{
-    console.log('服务器已经启动，地址是http://localhost:8080')
+const server = app.listen(8000, 'localhost', () =>{
+    console.log('服务器已经启动，地址是http://localhost:8000')
 })
+
+const subscriptions = new Set<any>();
+
+const wsServer = new Server({port: 8085});
+wsServer.on("connection", websocket => {
+    subscriptions.add(websocket)
+})
+
+var messageCount = 0;
+
+setInterval(() => {
+    subscriptions.forEach(ws => {
+        if (ws.readyState === 1) {
+            ws.send(JSON.stringify({messageCount: messageCount++}))
+        } else {
+            subscriptions.delete(ws);
+        }
+    })
+}, 2000);
 
 export class Stock {
     constructor(
